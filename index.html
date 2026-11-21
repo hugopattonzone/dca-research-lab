@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DCA Research Lab — Crypto DCA Backtester &amp; Grid Optimizer</title>
+  <meta name="description" content="Python desktop research tool for backtesting DCA-grid strategies on local OHLCV data. Multi-interval optimization, detailed replay, and a self-contained HTML report." />
+  <link rel="icon" type="image/png" href="img/icon.png" />
+  <link rel="stylesheet" href="site.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top">
+      <img src="img/icon.png" alt="DCA Research Lab logo" width="36" height="36" />
+      <span>DCA Research Lab</span>
+    </a>
+    <nav aria-label="Site">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#report">Report</a>
+      <a href="#buy">Buy</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Backtest DCA-grid strategies on historical crypto candles</h1>
+        <p class="lede">
+          A Python research tool that loads your local OHLCV data, runs a parameter
+          grid over multiple intervals, ranks the results, and replays the best
+          configurations into a self-contained HTML report.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#buy">Get it — $19</a>
+          <a class="btn btn-ghost" href="#how">See how it works</a>
+        </div>
+        <p class="hint">Windows · macOS · Linux — Python 3.10+, runs fully offline.</p>
+      </div>
+      <figure class="hero-shot">
+        <img src="img/ui.png" alt="DCA Research Lab web interface" width="1600" height="800" />
+        <figcaption>Local web UI — run, stop, and inspect the grid search.</figcaption>
+      </figure>
+    </section>
+
+    <section id="features" class="section">
+      <h2>What it does</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>Fast backtest engine</h3>
+          <p>Numba-accelerated core runs a full parameter grid without leaving Python.</p>
+        </article>
+        <article class="card">
+          <h3>Parameter grid search</h3>
+          <p>BB width, volume ratio, RSI, TP matrix, DCA steps, multiplier, timeout, and stop loss.</p>
+        </article>
+        <article class="card">
+          <h3>Multi-interval ranking</h3>
+          <p>Manual or randomized intervals, ranked by total profit, worst interval, or risk-adjusted score.</p>
+        </article>
+        <article class="card">
+          <h3>Long, short, or both</h3>
+          <p>Run the strategy in either direction, or let the engine trade both sides.</p>
+        </article>
+        <article class="card">
+          <h3>Detailed replay</h3>
+          <p>Equity curve, drawdown, DCA distribution, and stop-loss trades for the best configs.</p>
+        </article>
+        <article class="card">
+          <h3>Self-contained HTML report</h3>
+          <p>No CDN, no network access. The report opens offline in any browser.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li><span>1</span><div><h3>Load a CSV</h3><p>Generic OHLCV loader. Real 2026 LTC/USDT 1-minute candles included, plus synthetic demo data.</p></div></li>
+        <li><span>2</span><div><h3>Run the grid</h3><p>Configure via YAML or CLI overrides, then launch the search — in the terminal or the local web UI.</p></div></li>
+        <li><span>3</span><div><h3>Open the report</h3><p>HTML + CSV + JSON output with a full replay you can share and archive.</p></div></li>
+      </ol>
+    </section>
+
+    <section id="report" class="section">
+      <h2>The output</h2>
+      <p class="section-lede">Every run produces an equity curve, drawdown chart, and trade-level detail.</p>
+      <figure class="report-shot">
+        <img src="img/report.png" alt="DCA Research Lab HTML report" width="1280" height="2600" />
+      </figure>
+    </section>
+
+    <section id="buy" class="section">
+      <h2>Get DCA Research Lab</h2>
+      <div class="buy-card">
+        <p class="price">$19 <span>one-time</span></p>
+        <ul>
+          <li>Full Python source code</li>
+          <li><code>run.py</code> CLI and <code>webapp.py</code> local web UI</li>
+          <li>Optional Binance downloader — no API keys</li>
+          <li>Real and synthetic sample data</li>
+          <li>English and Russian documentation</li>
+          <li>EULA and risk disclaimer included</li>
+        </ul>
+        <p class="hint">Available on Codester, CodeCanyon, Whop, and FastSpring.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      DCA Research Lab is research and backtesting software — not a live trading bot,
+      signal service, or financial advice. Simulated results do not guarantee future
+      performance.
+    </p>
+    <p class="muted">&copy; 2026 DCA Research Lab</p>
+  </footer>
+</body>
+</html>
