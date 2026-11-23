@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCA Research Lab — configure and run</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, Segoe UI, sans-serif; background: #0f1419; color: #e6edf3; }
+  header { padding: 14px 20px; background: #161b22; border-bottom: 1px solid #21262d; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { margin: 0; font-size: 18px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  section { background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 16px; }
+  section h2 { margin: 0 0 12px; font-size: 15px; color: #58a6ff; }
+  label { display: block; margin: 10px 0 4px; color: #9da7b3; font-size: 12px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; background: #0d1117; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; font: inherit; }
+  input[type=checkbox] { width: auto; margin-right: 6px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 120px; }
+  .chk { display: flex; align-items: center; gap: 6px; margin: 8px 0; }
+  textarea.mono { font-family: Consolas, Menlo, monospace; font-size: 12px; }
+  button { cursor: pointer; border: 1px solid #30363d; border-radius: 6px; padding: 9px 14px; background: #21262d; color: #e6edf3; font: inherit; }
+  button.primary { background: #238636; border-color: #2ea043; color: #fff; }
+  button.danger { background: #da3633; border-color: #f85149; color: #fff; }
+  .toolbar { position: sticky; top: 0; z-index: 10; background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; grid-column: 1 / -1; }
+  .toolbar .status { margin-left: auto; color: #9da7b3; font-size: 12px; }
+  #log { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 10px; height: 320px; overflow: auto; font-family: Consolas, Menlo, monospace; font-size: 12px; white-space: pre-wrap; grid-column: 1 / -1; }
+  #banner { display: none; grid-column: 1 / -1; background: #3d1d1d; border: 1px solid #f85149; border-radius: 10px; padding: 14px; }
+  .hint { color: #7d8590; font-size: 12px; }
+  details summary { cursor: pointer; color: #58a6ff; margin: 10px 0 4px; }
+  a { color: #58a6ff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>DCA Research Lab — run in the browser (demo)</h1>
+  <div class="hint" id="fileinfo">loading…</div>
+</header>
+<main>
+  <div id="banner"></div>
+
+  <div class="toolbar">
+    <button class="primary" id="btnRun">▶ Run backtest</button>
+    <button id="btnDry">Check grid (dry-run)</button>
+    <button class="danger" id="btnStop" disabled>■ Stop</button>
+    <a id="reportLink" href="report.html" target="_blank" style="display:none">Open sample report</a>
+    <span class="status" id="status">ready</span>
+  </div>
+
+  <section>
+    <h2>Data</h2>
+    <label>CSV candle file</label>
+    <select id="data_file"></select>
+    <label class="hint">Files from the data/ folder. To add your own, put a CSV into data/ and reload the page.</label>
+    <div class="row">
+      <div><label>Timestamp unit</label>
+        <select id="timestamp_unit"><option value="ms">ms</option><option value="s">s</option><option value="auto">auto</option></select></div>
+      <div><label>Candle size (min)</label><input id="candle_interval_mins" type="number" step="1"></div>
+      <div><label>Trend EMA (hours)</label><input id="trend_ema_hours" type="number" step="1"></div>
+    </div>
+    <div class="row">
+      <div><label>Start (YYYY-MM-DD, empty = all)</label><input id="start" placeholder="2026-09-01"></div>
+      <div><label>End (YYYY-MM-DD, empty = all)</label><input id="end" placeholder=""></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Strategy (fixed values)</h2>
+    <div class="row">
+      <div><label>Starting balance, $</label><input id="starting_balance" type="number" step="0.01"></div>
+      <div><label>Base order size, $</label><input id="base_order_size" type="number" step="0.01"></div>
+      <div><label>Fee (fraction)</label><input id="fee_pct" type="number" step="0.0001"></div>
+    </div>
+    <div class="row">
+      <div><label>Leverage (x)</label><input id="leverage" type="number" step="0.1"></div>
+      <div><label>Order cooldown (min)</label><input id="cooldown_mins" type="number" step="0.1"></div>
+    </div>
+    <label class="hint">Leverage only affects the pre-trade margin check (can the balance cover the full ladder). No liquidation is modelled, so it does not change dollar P&amp;L.</label>
+    <label>Direction</label>
+    <div class="chk"><input type="checkbox" id="side_LONG">LONG &nbsp; <input type="checkbox" id="side_SHORT">SHORT</div>
+    <div class="row">
+      <div><label>Profit check (hours)</label><input id="profit_check_hours" type="number" step="1"></div>
+      <div><label>Min profit to check, %</label><input id="profit_check_min_pct" type="number" step="0.1"></div>
+      <div><label>Pause after SL (min)</label><input id="sl_pause_mins" type="number" step="1"></div>
+    </div>
+    <div class="chk"><input type="checkbox" id="use_trailing"> Trailing stop <input id="trailing_stop_pct" type="number" step="0.01" style="width:90px"> %</div>
+    <div class="chk"><input type="checkbox" id="use_breakeven"> Breakeven (arm % of TP <input id="be_arm_pct_of_tp" type="number" step="0.1" style="width:70px">, lock <input id="be_lock_pct" type="number" step="0.1" style="width:70px"> %)</div>
+    <div class="chk"><input type="checkbox" id="use_trend_filter"> Trend filter (entry gate <input id="trend_gate_entry" type="checkbox">, DCA gate <input id="trend_gate_dca" type="checkbox">)</div>
+
+    <details>
+      <summary>Advanced strategy rules (YAML)</summary>
+      <label class="hint">Zones, recovery, sl_widen, profit_pause, etc. — edit as YAML. Empty = defaults. See docs/STRATEGY_REFERENCE.md for details.</label>
+      <textarea id="advanced" class="mono" rows="14" spellcheck="false"></textarea>
+    </details>
+  </section>
+
+  <section>
+    <h2>Search grid (tested values)</h2>
+    <div class="row">
+      <div><label>BB width max (list)</label><input id="bb_max" value="2.0, 2.2"></div>
+      <div><label>Vol ratio min (list)</label><input id="vol_min" value="1.0"></div>
+      <div><label>RSI (list)</label><input id="rsi_val" value="60, 64"></div>
+      <div><label>DCA multiplier (list)</label><input id="mult" value="1.6"></div>
+    </div>
+    <div class="row">
+      <div><label>Trade timeout, min (list)</label><input id="timeout_mins" value="80000"></div>
+      <div><label>Stop-loss LONG, $ (list)</label><input id="long_stop_loss" value="600"></div>
+      <div><label>Stop-loss SHORT, $ (list)</label><input id="short_stop_loss" value="750"></div>
+    </div>
+    <label class="hint">Trade timeout forces a market close if a position is still open after this many minutes.</label>
+
+    <label>Take-profit mode</label>
+    <select id="tp_mode">
+      <option value="matrix">Ready TP ladders (tp_matrix)</option>
+      <option value="exhaustive">Exhaustive (tp_step_opts × tp_levels)</option>
+    </select>
+
+    <div id="tp_matrix_block">
+      <label>TP ladders (one ladder per line, comma-separated)</label>
+      <textarea id="tp_matrix" class="mono" rows="4" spellcheck="false"></textarea>
+    </div>
+    <div id="tp_exhaustive_block" style="display:none">
+      <div class="row">
+        <div><label>TP candidates (list)</label><input id="tp_step_opts" value="2.0, 2.2, 2.3, 1.0, 2.4"></div>
+        <div><label>Ladder length (tp_levels)</label><input id="tp_levels" type="number" step="1" value="6"></div>
+      </div>
+      <span class="hint">6 = entry + 5 DCA steps. Use 5 for a 4-step DCA ladder.</span>
+    </div>
+
+    <label>DCA steps (one profile per line, % comma-separated)</label>
+    <textarea id="dca_steps" class="mono" rows="3" spellcheck="false"></textarea>
+  </section>
+
+  <section>
+    <h2>Intervals and output</h2>
+    <label>Interval mode</label>
+    <select id="intervals_mode">
+      <option value="manual">manual (set by hand)</option>
+      <option value="auto">auto (randomized)</option>
+    </select>
+    <div id="manual_block">
+      <label>Intervals (one start,end per line)</label>
+      <textarea id="manual" class="mono" rows="3" spellcheck="false"></textarea>
+    </div>
+    <div id="auto_block" style="display:none">
+      <div class="row">
+        <div><label>Number of intervals</label><input id="auto_count" type="number" step="1"></div>
+        <div><label>Min months</label><input id="auto_min" type="number" step="1"></div>
+        <div><label>Max months</label><input id="auto_max" type="number" step="1"></div>
+        <div><label>Seed</label><input id="auto_seed" type="number" step="1"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div><label>Top-N results</label><input id="top_n" type="number" step="1"></div>
+      <div><label>Ranking</label>
+        <select id="rank_by"><option value="total_profit">total_profit</option><option value="worst_interval">worst_interval</option><option value="risk_adjusted">risk_adjusted</option></select></div>
+      <div><label>Worker processes</label><input id="workers" type="number" step="1"></div>
+      <div><label>Combination limit</label><input id="max_combinations" type="number" step="1000"></div>
+    </div>
+  </section>
+
+  <div id="log">The run log will appear here.</div>
+</main>
+
+<script>
+let base = null;
+let jobId = null;
+let timer = null;
+const $ = (id) => document.getElementById(id);
+
+function parseList(text) {
+  return String(text).split(/[,\s]+/).map(s => s.trim()).filter(Boolean).map(Number);
+}
+function parseLadders(text) {
+  return String(text).split(/\n/).map(line => line.trim()).filter(Boolean)
+    .map(line => line.split(/[,\s]+/).filter(Boolean).map(Number));
+}
+function laddersToText(list) {
+  return (list || []).map(row => (row || []).join(', ')).join('\n');
+}
+
+function fillFromConfig(cfg) {
+  $('data_file').value = cfg.data.file || '';
+  $('timestamp_unit').value = cfg.data.timestamp_unit || 'ms';
+  $('candle_interval_mins').value = cfg.data.candle_interval_mins ?? 60;
+  $('trend_ema_hours').value = cfg.data.trend_ema_hours ?? 200;
+  $('start').value = cfg.data.start || '';
+  $('end').value = cfg.data.end || '';
+
+  const s = cfg.strategy || {};
+  $('starting_balance').value = s.starting_balance;
+  $('base_order_size').value = s.base_order_size;
+  $('fee_pct').value = s.fee_pct;
+  $('leverage').value = s.leverage ?? 20;
+  $('cooldown_mins').value = s.cooldown_mins;
+  $('side_LONG').checked = (s.sides || []).includes('LONG');
+  $('side_SHORT').checked = (s.sides || []).includes('SHORT');
+  $('profit_check_hours').value = s.profit_check_hours;
+  $('profit_check_min_pct').value = s.profit_check_min_pct;
+  $('sl_pause_mins').value = s.sl_pause_mins ?? 0;
+  $('use_trailing').checked = !!s.use_trailing;
+  $('trailing_stop_pct').value = s.trailing_stop_pct;
+  $('use_breakeven').checked = !!s.use_breakeven;
+  $('be_arm_pct_of_tp').value = s.be_arm_pct_of_tp;
+  $('be_lock_pct').value = s.be_lock_pct;
+  $('use_trend_filter').checked = !!s.use_trend_filter;
+  $('trend_gate_entry').checked = !!s.trend_gate_entry;
+  $('trend_gate_dca').checked = !!s.trend_gate_dca;
+
+  const g = cfg.grid || {};
+  $('bb_max').value = (g.bb_max || []).join(', ');
+  $('vol_min').value = (g.vol_min || []).join(', ');
+  $('rsi_val').value = (g.rsi_val || []).join(', ');
+  $('mult').value = (g.mult || []).join(', ');
+  $('timeout_mins').value = (g.timeout_mins || []).join(', ');
+  $('long_stop_loss').value = (g.long_stop_loss || []).join(', ');
+  $('short_stop_loss').value = (g.short_stop_loss || []).join(', ');
+  const exhaustive = g.tp_step_opts != null;
+  $('tp_mode').value = exhaustive ? 'exhaustive' : 'matrix';
+  $('tp_matrix').value = laddersToText(g.tp_matrix);
+  $('tp_step_opts').value = (g.tp_step_opts || []).join(', ');
+  $('tp_levels').value = g.tp_levels ?? 6;
+  $('dca_steps').value = laddersToText(g.dca_steps);
+  toggleTpMode();
+
+  const iv = cfg.intervals || {};
+  $('intervals_mode').value = iv.mode || 'manual';
+  $('manual').value = (iv.manual || []).map(p => p[0] + ',' + p[1]).join('\n');
+  $('auto_count').value = (iv.auto || {}).count ?? 7;
+  $('auto_min').value = (iv.auto || {}).min_months ?? 10;
+  $('auto_max').value = (iv.auto || {}).max_months ?? 30;
+  $('auto_seed').value = (iv.auto || {}).seed ?? 78;
+  toggleIntervals();
+
+  const o = cfg.output || {}, r = cfg.runtime || {};
+  $('top_n').value = o.top_n ?? 20;
+  $('rank_by').value = o.rank_by || 'total_profit';
+  $('workers').value = r.workers ?? 1;
+  $('max_combinations').value = r.max_combinations ?? 200000;
+}
+
+function toggleTpMode() {
+  const ex = $('tp_mode').value === 'exhaustive';
+  $('tp_matrix_block').style.display = ex ? 'none' : '';
+  $('tp_exhaustive_block').style.display = ex ? '' : 'none';
+}
+function toggleIntervals() {
+  const auto = $('intervals_mode').value === 'auto';
+  $('manual_block').style.display = auto ? 'none' : '';
+  $('auto_block').style.display = auto ? '' : 'none';
+}
+$('tp_mode').addEventListener('change', toggleTpMode);
+$('intervals_mode').addEventListener('change', toggleIntervals);
+
+function collectConfig() {
+  const c = JSON.parse(JSON.stringify(base));
+  c.data.file = $('data_file').value;
+  c.data.timestamp_unit = $('timestamp_unit').value;
+  c.data.candle_interval_mins = Number($('candle_interval_mins').value);
+  c.data.trend_ema_hours = Number($('trend_ema_hours').value);
+  c.data.start = $('start').value || null;
+  c.data.end = $('end').value || null;
+
+  c.strategy.sides = [];
+  if ($('side_LONG').checked) c.strategy.sides.push('LONG');
+  if ($('side_SHORT').checked) c.strategy.sides.push('SHORT');
+  c.strategy.starting_balance = Number($('starting_balance').value);
+  c.strategy.base_order_size = Number($('base_order_size').value);
+  c.strategy.fee_pct = Number($('fee_pct').value);
+  c.strategy.leverage = Number($('leverage').value);
+  c.strategy.cooldown_mins = Number($('cooldown_mins').value);
+  c.strategy.profit_check_hours = Number($('profit_check_hours').value);
+  c.strategy.profit_check_min_pct = Number($('profit_check_min_pct').value);
+  c.strategy.sl_pause_mins = Number($('sl_pause_mins').value);
+  c.strategy.use_trailing = $('use_trailing').checked;
+  c.strategy.trailing_stop_pct = Number($('trailing_stop_pct').value);
+  c.strategy.use_breakeven = $('use_breakeven').checked;
+  c.strategy.be_arm_pct_of_tp = Number($('be_arm_pct_of_tp').value);
+  c.strategy.be_lock_pct = Number($('be_lock_pct').value);
+  c.strategy.use_trend_filter = $('use_trend_filter').checked;
+  c.strategy.trend_gate_entry = $('trend_gate_entry').checked;
+  c.strategy.trend_gate_dca = $('trend_gate_dca').checked;
+
+  c.grid.bb_max = parseList($('bb_max').value);
+  c.grid.vol_min = parseList($('vol_min').value);
+  c.grid.rsi_val = parseList($('rsi_val').value);
+  c.grid.mult = parseList($('mult').value);
+  c.grid.timeout_mins = parseList($('timeout_mins').value);
+  c.grid.long_stop_loss = parseList($('long_stop_loss').value);
+  c.grid.short_stop_loss = parseList($('short_stop_loss').value);
+  c.grid.dca_steps = parseLadders($('dca_steps').value);
+  if ($('tp_mode').value === 'exhaustive') {
+    c.grid.tp_step_opts = parseList($('tp_step_opts').value);
+    c.grid.tp_levels = Number($('tp_levels').value);
+  } else {
+    c.grid.tp_step_opts = null;
+    c.grid.tp_matrix = parseLadders($('tp_matrix').value);
+  }
+
+  c.intervals.mode = $('intervals_mode').value;
+  if (c.intervals.mode === 'manual') {
+    c.intervals.manual = String($('manual').value).split(/\n/).map(l => l.trim()).filter(Boolean)
+      .map(l => { const parts = l.split(','); return [parts[0].trim(), parts[1].trim()]; });
+  } else {
+    c.intervals.auto = {
+      count: Number($('auto_count').value),
+      min_months: Number($('auto_min').value),
+      max_months: Number($('auto_max').value),
+      seed: Number($('auto_seed').value),
+    };
+  }
+
+  c.output.top_n = Number($('top_n').value);
+  c.output.rank_by = $('rank_by').value;
+  c.runtime.workers = Number($('workers').value);
+  c.runtime.max_combinations = Number($('max_combinations').value);
+  return c;
+}
+
+function startPolling() {
+  if (timer) clearInterval(timer);
+  timer = setInterval(async () => {
+    if (!jobId) return;
+    const r = await fetch('/api/status?id=' + jobId);
+    const st = await r.json();
+    $('log').textContent = st.lines.join('\n') || '…';
+    if (st.running) {
+      $('status').textContent = 'running…';
+      $('btnRun').disabled = true; $('btnDry').disabled = true; $('btnStop').disabled = false;
+    } else {
+      $('status').textContent = st.code === 0 ? 'done' : 'error (code ' + st.code + ')';
+      $('btnRun').disabled = false; $('btnDry').disabled = false; $('btnStop').disabled = true;
+      $('reportLink').style.display = st.report ? '' : 'none';
+      clearInterval(timer); timer = null;
+    }
+  }, 1200);
+}
+
+async function run(dry) {
+  if (!base) { $('log').textContent = 'Configuration not loaded yet.'; return; }
+  const payload = { config: collectConfig(), advanced_yaml: $('advanced').value, dry_run: dry };
+  $('log').textContent = dry ? 'Checking grid…' : 'Running…';
+  $('reportLink').style.display = 'none';
+  const r = await fetch('/api/run', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+  const j = await r.json();
+  if (j.error) { $('log').textContent = 'Error: ' + j.error; return; }
+  jobId = j.job;
+  startPolling();
+}
+
+const DEMO_NOTE = 'This is a static demo. The real run happens locally via webapp.py — open the sample report with the link above.';
+$('btnRun').addEventListener('click', () => { $('log').textContent = DEMO_NOTE; });
+$('btnDry').addEventListener('click', () => { $('log').textContent = DEMO_NOTE; });
+$('btnStop').addEventListener('click', () => { $('log').textContent = DEMO_NOTE; });
+
+const DEMO_CONFIG = {
+  data: { file: 'data/ltcusdt_1m_2026.csv', timestamp_unit: 'ms', candle_interval_mins: 1, trend_ema_hours: 200, start: '', end: '' },
+  strategy: { starting_balance: 10000.0, base_order_size: 750.0, fee_pct: 0.0005, sides: ['SHORT'], leverage: 20.0, cooldown_mins: 60.0, profit_check_hours: 1000.0, profit_check_min_pct: 1.0, sl_pause_mins: 0.0, use_trailing: false, trailing_stop_pct: 0.1, use_breakeven: false, be_arm_pct_of_tp: 0.5, be_lock_pct: 1.5, use_trend_filter: false, trend_gate_entry: false, trend_gate_dca: false },
+  grid: { bb_max: [2.2], vol_min: [0.8], rsi_val: [64], tp_step_opts: [2.0, 2.2, 2.3, 1.0, 2.4], tp_levels: 6, dca_steps: [[1.0, 2.0, 3.0, 5.0, 8.0]], mult: [1.6], timeout_mins: [80000.0], long_stop_loss: [600.0], short_stop_loss: [750.0] },
+  intervals: { mode: 'manual', manual: [['2026-01-01', '2026-11-19']], auto: { count: 7, min_months: 10, max_months: 30, seed: 78 } },
+  output: { top_n: 20, rank_by: 'total_profit' },
+  runtime: { workers: 8, max_combinations: 200000 }
+};
+
+(function init() {
+  base = DEMO_CONFIG;
+  $('advanced').value = '';
+  const sel = $('data_file');
+  const f = { name: 'ltcusdt_1m_2026.csv', size_mb: '21.7', first: '2026-01-01', last: '2026-11-19' };
+  const opt = document.createElement('option');
+  opt.value = 'data/' + f.name;
+  opt.textContent = f.name + '  (' + f.size_mb + ' MB, ' + f.first + '…' + f.last + ')';
+  sel.appendChild(opt);
+  fillFromConfig(base);
+  $('fileinfo').textContent = f.name + ' · static demo';
+  $('log').textContent = 'Static demo — this mirrors the local web UI. A real run happens in webapp.py on your machine. Open the sample report with the link above.';
+  $('reportLink').style.display = '';
+})();
+</script>
+</body>
+</html>
